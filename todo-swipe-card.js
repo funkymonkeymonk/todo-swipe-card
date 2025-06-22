@@ -1625,6 +1625,34 @@ class TodoSwipeCard extends HTMLElement {
 
     const cardElement = await helpers.createCardElement(cardConfig);
 
+    // Filter tasks if show_due_today_only is enabled
+    if (this._config.show_due_today_only) {
+      setTimeout(() => {
+        const actualCard = this._getActualCardElement(cardElement);
+        if (actualCard && actualCard.shadowRoot) {
+          const items = actualCard.shadowRoot.querySelectorAll('ha-check-list-item');
+          const now = new Date();
+          const nowYMD = now.toISOString().slice(0, 10);
+          items.forEach(item => {
+            // Try to get due date from the item's attributes (HA stores it as data-due or in the item attributes)
+            let dueDateStr = item.getAttribute('data-due') || item.due || '';
+            let show = false;
+            if (dueDateStr) {
+              // Try to parse as date
+              let dueDate = new Date(dueDateStr);
+              if (!isNaN(dueDate)) {
+                const dueYMD = dueDate.toISOString().slice(0, 10);
+                show = (dueYMD === nowYMD) || (dueDate < now);
+              }
+            }
+            // Hide if not due today or overdue
+            if (!show) item.style.display = 'none';
+            else item.style.display = '';
+          });
+        }
+      }, 200);
+    }
+
     // Check if title should be shown
     const showTitle =
       (typeof entityConfig === "object" && entityConfig.show_title) || false;
@@ -2938,7 +2966,7 @@ class TodoSwipeCardEditor extends LitElement {
   }
 
   /**
-   * Detect legacy configuration format in editor
+   * Detect legacy configuration
    * @param {Object} config - Configuration to check
    * @returns {Object} Detection result with isLegacy flag and found properties
    * @private
@@ -3376,7 +3404,7 @@ class TodoSwipeCardEditor extends LitElement {
       }
 
       .card-actions ha-icon-button:hover {
-        color: var(--primary-text-color);
+        color: var(--primary-color);
       }
 
       .no-cards {
